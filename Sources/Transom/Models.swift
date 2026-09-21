@@ -120,7 +120,7 @@ struct BrowserWindow: Equatable {
 
 enum ContainerGeometry {
     static let tabHeight: CGFloat = 44
-    static let tabOverlap: CGFloat = 16
+    static let tabOverlap: CGFloat = 18
     static let shellInset: CGFloat = 6
     static let resizeHitWidth: CGFloat = 10
     static let minimumBrowserSize = CGSize(width: 520, height: 360)
