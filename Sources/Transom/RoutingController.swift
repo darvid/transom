@@ -78,11 +78,12 @@ final class RoutingController {
     }
 
     private func launch(_ url: URL, with choice: ProfileChoice) {
-        if case let .failure(error) = launcher.launch(
+        launcher.launch(
             url: url,
             browser: choice.browser,
             profile: choice.profile
-        ) {
+        ) { result in
+            guard case let .failure(error) = result else { return }
             let alert = NSAlert()
             alert.alertStyle = .warning
             alert.messageText = "Could not open the link"

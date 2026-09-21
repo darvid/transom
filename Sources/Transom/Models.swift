@@ -35,6 +35,22 @@ enum BrowserKind: String, CaseIterable, Hashable, Codable {
 }
 
 struct BrowserProfile: Equatable {
+    // UI-only identity for browsers without discovered profiles. Launching
+    // that choice must still use nil rather than a profile-directory argument.
+    static let pickerDefaultID = "__transom_default__"
+
+    static func pickerDefault(browser: BrowserKind, settings: AppSettings = .shared) -> BrowserProfile {
+        let customization = settings.profileOverride(browser: browser, profileID: pickerDefaultID)
+        return BrowserProfile(
+            id: pickerDefaultID,
+            name: "Default profile",
+            color: .tertiaryLabelColor,
+            directory: nil,
+            customName: customization?.displayName,
+            customColor: customization?.colorHex.flatMap(NSColor.init(hexRGB:))
+        )
+    }
+
     let id: String
     let name: String
     let color: NSColor

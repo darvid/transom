@@ -230,12 +230,28 @@ enum URLRuleMatcher {
 }
 
 struct BrowserLauncher {
-    @discardableResult
     func launch(
         url: URL,
         browser: InstalledBrowser,
-        profile: BrowserProfile?
-    ) -> Result<Void, Error> {
+        profile: BrowserProfile?,
+        completion: @escaping (Result<Void, Error>) -> Void
+    ) {
+        if profile == nil {
+            // Default-profile choices belong to Launch Services: let the
+            // browser resolve its default profile and activate its window.
+            let configuration = NSWorkspace.OpenConfiguration()
+            configuration.activates = true
+            NSWorkspace.shared.open([url], withApplicationAt: browser.applicationURL, configuration: configuration) { _, error in
+                DispatchQueue.main.async {
+                    if let error {
+                        completion(.failure(error))
+                    } else {
+                        completion(.success(()))
+                    }
+                }
+            }
+            return
+        }
         let process = Process()
         process.executableURL = browser.executableURL
         process.standardOutput = FileHandle.nullDevice
@@ -259,9 +275,9 @@ struct BrowserLauncher {
 
         do {
             try process.run()
-            return .success(())
+            completion(.success(()))
         } catch {
-            return .failure(error)
+            completion(.failure(error))
         }
     }
 }
