@@ -102,29 +102,3 @@ mise run test
 ```
 
 The built application is written to `.build/Transom.app`.
-
-## Signed releases
-
-Signed builds require `SIGNING_IDENTITY` to name an installed Developer
-ID Application identity. Set local defaults in the ignored
-`mise.local.toml`. Notarization uses the Keychain profile named by
-`NOTARY_PROFILE`, defaulting to `transom-notary`.
-
-```bash
-mise run signed-app  # Signed arm64 app; no upload
-mise run dmg         # Signed DMG; no upload
-mise run release     # Submit DMG to Apple, staple, verify, checksum
-```
-
-The release output is `.build/distribution/Transom-VERSION-arm64.dmg`
-with `SHA256SUMS`. The image contains the app and an Applications
-shortcut. It supports Apple silicon only. The notarization ticket is
-stapled to the DMG; distribute that image rather than the unstapled app
-from the build directory.
-
-`version.txt` supplies both bundle version fields. Stable three-part
-versions are supported; prerelease versions are not yet supported.
-
-Release-please uses Conventional Commits to propose version and
-changelog updates, starting at `0.1.0`. Merging a release PR builds a
-signed, notarized DMG attached to a draft GitHub Release for review.
