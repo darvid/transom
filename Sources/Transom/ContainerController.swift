@@ -519,11 +519,18 @@ final class ContainerController {
             width: appKitBrowserFrame.width,
             height: ContainerGeometry.tabHeight
         )
+        let screen = NSScreen.screens.max {
+            let left = $0.frame.intersection(appKitBrowserFrame)
+            let right = $1.frame.intersection(appKitBrowserFrame)
+            return (left.isNull ? 0 : left.width * left.height)
+                < (right.isNull ? 0 : right.width * right.height)
+        }
+        let edgeExtension = 1 / (screen?.backingScaleFactor ?? 1)
         shellPanel.setFrame(
             CGRect(
-                x: tabFrame.minX,
+                x: tabFrame.minX - edgeExtension,
                 y: tabFrame.minY - ContainerGeometry.tabOverlap,
-                width: tabFrame.width,
+                width: tabFrame.width + 2 * edgeExtension,
                 height: tabFrame.height + ContainerGeometry.tabOverlap
             ),
             display: true
