@@ -123,7 +123,7 @@ mise run test
 
 The built application is written to `.build/Transom.app`.
 
-### Documentation checks
+### Linting and hooks
 
 Install the pinned tools and local pre-commit hooks:
 
@@ -132,12 +132,13 @@ mise install
 mise run hooks:install
 ```
 
-The hooks check Markdown and spelling without modifying or staging
-files. Run the same checks across the repository, or apply Markdown
-fixes explicitly:
+The hooks check Swift formatting, shell scripts, GitHub workflows,
+property lists, Markdown, and spelling without modifying or staging
+files. Run all checks or apply formatting fixes explicitly:
 
 ```bash
 mise run lint
+mise run fmt:swift
 mise run fmt:markdown
 mise run lint:links
 ```

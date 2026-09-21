@@ -18,7 +18,7 @@ final class RoutingController {
         registry.refresh()
 
         if !NSEvent.modifierFlags.contains(.option), let rule = store.matchingRule(for: url),
-            let choice = choice(for: rule)
+           let choice = choice(for: rule)
         {
             launch(url, with: choice)
             return

@@ -16,7 +16,7 @@ final class BrowserRegistry {
 
     func browser(for runningApplication: NSRunningApplication) -> InstalledBrowser? {
         if let bundleIdentifier = runningApplication.bundleIdentifier,
-            let exact = browsers.first(where: { $0.bundleIdentifier == bundleIdentifier })
+           let exact = browsers.first(where: { $0.bundleIdentifier == bundleIdentifier })
         {
             return exact
         }

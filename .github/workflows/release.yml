@@ -96,6 +96,7 @@ jobs:
           test "$(uname -m)" = arm64
           [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
           test "$(< version.txt)" = "${RELEASE_TAG#v}"
+          mise run lint
           mise run check
           mise run test
       - name: Import signing identity and notarization credentials

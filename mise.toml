@@ -38,8 +38,16 @@ description = "Clean Swift build artifacts"
 run = "swift package clean"
 
 [tasks.lint]
-description = "Check Markdown and spelling across the repository"
+description = "Check Swift formatting, scripts, workflows, plists, and documentation"
 run = "hk check --all"
+
+[tasks."lint:docs"]
+description = "Check Markdown and spelling across the repository"
+run = "hk check --all --step rumdl --step typos"
+
+[tasks."fmt:swift"]
+description = "Fix Swift formatting without staging changes"
+run = "hk fix --all --step swiftformat"
 
 [tasks."fmt:markdown"]
 description = "Fix Markdown formatting without staging changes"
@@ -58,3 +66,6 @@ hk = "2.0.1"
 rumdl = "0.2.74"
 typos = "1.50.2"
 lychee = "0.24.2"
+swiftformat = "0.63.0"
+shellcheck = "0.11.0"
+actionlint = "1.7.12"

@@ -169,8 +169,8 @@ final class ContainerController {
 
         if !isManipulating {
             if let pendingSelectionID,
-                liveWindowIDs.contains(pendingSelectionID),
-                Date() < pendingSelectionDeadline
+               liveWindowIDs.contains(pendingSelectionID),
+               Date() < pendingSelectionDeadline
             {
                 selectedWindowID = pendingSelectionID
                 pendingSelectionMatches = frontmostWindowID == pendingSelectionID
@@ -181,9 +181,9 @@ final class ContainerController {
                     self.pendingSelectionID = nil
                 }
             } else if let pointerDragWindowID,
-                liveWindowIDs.contains(pointerDragWindowID),
-                pointerButtonIsDown
-                    || Date() <= (pointerDragDeadline ?? .distantPast)
+                      liveWindowIDs.contains(pointerDragWindowID),
+                      pointerButtonIsDown
+                      || Date() <= (pointerDragDeadline ?? .distantPast)
             {
                 // External move/resize tools can briefly perturb the native
                 // stacking order while dragging one grouped window. Keep the
@@ -192,8 +192,8 @@ final class ContainerController {
                 // between normal discovery polls.
                 selectedWindowID = pointerDragWindowID
             } else if pointerButtonIsDown,
-                let selectedWindowID,
-                liveWindowIDs.contains(selectedWindowID)
+                      let selectedWindowID,
+                      liveWindowIDs.contains(selectedWindowID)
             {
                 self.selectedWindowID = selectedWindowID
             } else {
@@ -222,7 +222,7 @@ final class ContainerController {
                 // several polls. Keep retrying our frame without accepting
                 // that transient geometry as the container's new position.
             } else if AppSettings.shared.tileManagerCompatibility,
-                shouldApplyPendingInteractiveTile(to: selectedWindow.frame)
+                      shouldApplyPendingInteractiveTile(to: selectedWindow.frame)
             {
                 browserFrame = ContainerGeometry.browserFrame(
                     fittingOuterFrame: selectedWindow.frame
@@ -305,7 +305,7 @@ final class ContainerController {
 
     func followPointerDrag() {
         guard let pointerDragWindowID,
-            let frame = coreGraphicsFrame(of: pointerDragWindowID)
+              let frame = coreGraphicsFrame(of: pointerDragWindowID)
         else {
             return
         }
@@ -419,7 +419,7 @@ final class ContainerController {
     private func applyBrowserFrame(excluding excludedWindowID: CGWindowID? = nil) {
         guard let browserFrame else { return }
         for window in windows
-        where window.id != excludedWindowID && window.frame.distance(to: browserFrame) > 1 {
+            where window.id != excludedWindowID && window.frame.distance(to: browserFrame) > 1 {
             accessibility.setFrame(browserFrame, of: window.element)
         }
     }
@@ -436,7 +436,7 @@ final class ContainerController {
             guard
                 (dictionary[kCGWindowLayer as String] as? NSNumber)?.intValue == 0,
                 let id = (dictionary[kCGWindowNumber as String] as? NSNumber)
-                    .map({ CGWindowID($0.uint32Value) }),
+                .map({ CGWindowID($0.uint32Value) }),
                 !managedWindowIDs.contains(id),
                 (dictionary[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value != getpid(),
                 let bounds = dictionary[kCGWindowBounds as String] as? [String: Any],
@@ -477,7 +477,7 @@ final class ContainerController {
             guard
                 (dictionary[kCGWindowLayer as String] as? NSNumber)?.intValue == 0,
                 let id = (dictionary[kCGWindowNumber as String] as? NSNumber)
-                    .map({ CGWindowID($0.uint32Value) }),
+                .map({ CGWindowID($0.uint32Value) }),
                 managedWindowIDs.contains(id),
                 let bounds = dictionary[kCGWindowBounds as String] as? [String: Any],
                 let x = (bounds["X"] as? NSNumber)?.doubleValue,

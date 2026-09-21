@@ -99,8 +99,8 @@ final class WorkspaceController: NSObject, NSMenuDelegate {
             }
         }
         if shiftIsDown,
-            event.type == .leftMouseDown || event.type == .leftMouseUp
-                || (event.type == .flagsChanged && leftButtonIsDown)
+           event.type == .leftMouseDown || event.type == .leftMouseUp
+           || (event.type == .flagsChanged && leftButtonIsDown)
         {
             for container in containers.values {
                 container.expectInteractiveTilePlacement()
@@ -143,7 +143,7 @@ final class WorkspaceController: NSObject, NSMenuDelegate {
                 beginPointerTracking()
             }
         } else if pointerButtonIsDown, pointerTrackingTimer != nil,
-            CGEventSource.flagsState(.combinedSessionState).contains(.maskShift)
+                  CGEventSource.flagsState(.combinedSessionState).contains(.maskShift)
         {
             for container in containers.values {
                 container.expectInteractiveTilePlacement()

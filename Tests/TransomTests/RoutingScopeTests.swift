@@ -11,7 +11,7 @@ struct RoutingScopeTests {
         let store = RoutingStore(fileURL: file)
         func add(_ pattern: String, _ profile: String, exact: Bool = false) {
             store.add(RoutingRule(matcher: exact ? .hostPathExact : .hostPathPrefix,
-                pattern: pattern, browser: .chrome, profileID: profile))
+                                  pattern: pattern, browser: .chrome, profileID: profile))
         }
         add("github.com/acme/widget", "repo")
         add("github.com/acme", "owner")
@@ -26,7 +26,7 @@ struct RoutingScopeTests {
         add("github.com/acme/widget/issues", "exact", exact: true)
         #expect(store.matchingRule(for: repoURL)?.profileID == "exact")
         store.add(RoutingRule(matcher: .urlRegex, pattern: "^https://github\\.com/acme/widget/issues$",
-            browser: .chrome, profileID: "advanced"))
+                              browser: .chrome, profileID: "advanced"))
         add("github.com", "new-site")
         #expect(store.matchingRule(for: repoURL)?.profileID == "advanced")
     }
