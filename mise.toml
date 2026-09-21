@@ -36,3 +36,25 @@ run = "swift test"
 [tasks.clean]
 description = "Clean Swift build artifacts"
 run = "swift package clean"
+
+[tasks.lint]
+description = "Check Markdown and spelling across the repository"
+run = "hk check --all"
+
+[tasks."fmt:markdown"]
+description = "Fix Markdown formatting without staging changes"
+run = "hk fix --all --step rumdl"
+
+[tasks."lint:links"]
+description = "Check README links, including remote URLs"
+run = "lychee --no-progress --max-retries 2 --timeout 20 README.md"
+
+[tasks."hooks:install"]
+description = "Install repository-local hk hooks through mise"
+run = "hk install --mise"
+
+[tools]
+hk = "2.0.1"
+rumdl = "0.2.74"
+typos = "1.50.2"
+lychee = "0.24.2"

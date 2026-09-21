@@ -17,20 +17,21 @@ Current releases do not support Intel Macs.
 1. Open the [latest release](https://github.com/darvid/transom/releases/latest)
    and download `Transom-VERSION-arm64.dmg` from **Assets**.
 2. Open the DMG and drag **Transom** into **Applications**.
-3. Eject the disk image, then open Transom from Applications. Transom
-   runs in the menu bar; it does not show a Dock icon.
+3. Eject the disk image, then open Transom from Applications. It does
+   not show a Dock icon. Right-click the browser overlay to open
+   **Settings…** or quit Transom.
 4. Grant access in **System Settings → Privacy & Security →
    Accessibility**. Reopen Transom if the browser overlay does not
    appear after granting access.
-5. To route web links through the profile picker, choose **Make Transom
-   Default Browser…** from its menu-bar menu and confirm the system
-   prompt.
+5. To route web links through the profile picker, open **Settings… →
+   Links**, choose **Make Transom Default Browser…**, and confirm the
+   system prompt.
 
 Release downloads are Developer ID–signed and notarized by Apple.
 
-To update, quit Transom from its menu-bar menu, download the latest DMG,
-and replace the existing app in Applications. Your settings remain in
-your user account.
+To update, quit Transom from the overlay's right-click menu, download
+the latest DMG, and replace the existing app in Applications. Your
+settings remain in your user account.
 
 ## Supported browsers
 
@@ -71,7 +72,7 @@ browser windows and synchronizing them through the Accessibility API.
 ## Web-link routing
 
 Transom registers `http` and `https` handlers and can be selected as the
-default browser from its menu-bar menu.
+default browser from **Settings… → Links**.
 
 Unmatched links open a Spotlight-style profile picker with:
 
@@ -100,9 +101,9 @@ Rules are stored at:
 
 ## Settings and themes
 
-Open **Settings…** from the menu bar or the overlay’s native
-right-click menu. Settings include launch-at-login, window-manager
-compatibility, browser discovery, link routing, and overlay themes.
+Open **Settings…** from the overlay’s native right-click menu. Settings
+include launch-at-login, window-manager compatibility, browser discovery,
+link routing, and overlay themes.
 Themes include Automatic, Light, Black, and all four Catppuccin flavors:
 Latte, Frappé, Macchiato, and Mocha. The URL opener follows the selected
 theme. Profile names and colors can be customized in **Browsers**.
@@ -121,3 +122,26 @@ mise run test
 ```
 
 The built application is written to `.build/Transom.app`.
+
+### Documentation checks
+
+Install the pinned tools and local pre-commit hooks:
+
+```bash
+mise install
+mise run hooks:install
+```
+
+The hooks check Markdown and spelling without modifying or staging
+files. Run the same checks across the repository, or apply Markdown
+fixes explicitly:
+
+```bash
+mise run lint
+mise run fmt:markdown
+mise run lint:links
+```
+
+Link checks access the network and run separately in CI, not during
+commits. The generated changelog is excluded from formatting and
+spelling checks.

@@ -1,0 +1,15 @@
+[global]
+exclude = ["CHANGELOG.md", ".build/**", ".git/**"]
+
+[MD013]
+line-length = 72
+code-blocks = false
+tables = false
+ignore-link-urls = true
+
+[MD033]
+allowed-elements = ["p", "img"]
+
+[per-file-ignores]
+# The centered logo intentionally appears before the title.
+"README.md" = ["MD041"]

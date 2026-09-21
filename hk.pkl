@@ -1,0 +1,24 @@
+amends "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Builtins.pkl"
+
+steps {
+  ["rumdl"] = (Builtins.rumdl) {
+    exclude = List("CHANGELOG.md")
+  }
+  ["typos"] = (Builtins.typos) {
+    glob = List("**/*.md", "**/*.markdown")
+    exclude = List("CHANGELOG.md")
+  }
+}
+
+hooks {
+  ["pre-commit"] {
+    fix = false
+    stage = false
+    stash = "none"
+  }
+  ["fix"] {
+    stage = false
+    stash = "none"
+  }
+}
