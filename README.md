@@ -9,6 +9,8 @@ groups windows from the same browser into a profile-oriented stack, adds
 a glass tab strip above the browser, and keeps grouped windows together
 when moved or resized.
 
+![Transom profile tabs above a browser window](docs/assets/readme-screenshot.png)
+
 ## Install
 
 Requires macOS 13 or later on an Apple silicon Mac (M1 or newer).
