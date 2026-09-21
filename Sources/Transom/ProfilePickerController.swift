@@ -3,6 +3,20 @@ import AppKit
 struct ProfileChoice {
     let browser: InstalledBrowser
     let profile: BrowserProfile?
+
+    var displayProfile: BrowserProfile { profile ?? .pickerDefault(browser: browser.kind) }
+
+    static func pickerChoices(for browsers: [InstalledBrowser], settings: AppSettings = .shared) -> [ProfileChoice] {
+        browsers.flatMap { browser in
+            if browser.profiles.isEmpty {
+                return settings.isProfileVisibleInPicker(browser: browser.kind, profileID: BrowserProfile.pickerDefaultID)
+                    ? [ProfileChoice(browser: browser, profile: nil)] : []
+            }
+            return browser.profiles.filter {
+                settings.isProfileVisibleInPicker(browser: browser.kind, profileID: $0.id)
+            }.map { ProfileChoice(browser: browser, profile: $0) }
+        }
+    }
 }
 
 final class ProfilePickerController: NSObject, NSTableViewDataSource, NSTableViewDelegate,
@@ -12,6 +26,7 @@ final class ProfilePickerController: NSObject, NSTableViewDataSource, NSTableVie
     private let searchField = NSTextField()
     private let urlLabel = NSTextField(labelWithString: "")
     private let tableView = NSTableView()
+    private let emptyLabel = NSTextField(wrappingLabelWithString: "")
     private let scopePopup = NSPopUpButton()
     private let customPath = NSTextField()
     private let scopeHint = NSTextField(wrappingLabelWithString: "")
@@ -127,6 +142,10 @@ final class ProfilePickerController: NSObject, NSTableViewDataSource, NSTableVie
         scrollView.autohidesScrollers = true
         scrollView.scrollerStyle = .overlay
         scrollView.translatesAutoresizingMaskIntoConstraints = false
+        emptyLabel.alignment = .center
+        emptyLabel.font = .systemFont(ofSize: 13)
+        emptyLabel.isHidden = true
+        emptyLabel.translatesAutoresizingMaskIntoConstraints = false
 
         scopePopup.target = self
         scopePopup.action = #selector(scopeChanged)
@@ -150,7 +169,7 @@ final class ProfilePickerController: NSObject, NSTableViewDataSource, NSTableVie
         let customPathHeight = customPath.heightAnchor.constraint(equalToConstant: 0)
         self.customPathHeight = customPathHeight
 
-        for view in [searchSurface, urlLabel, scrollView, scopePopup, customPath, scopeHint, openButton] {
+        for view in [searchSurface, urlLabel, scrollView, emptyLabel, scopePopup, customPath, scopeHint, openButton] {
             background.addSubview(view)
         }
         NSLayoutConstraint.activate([
@@ -165,6 +184,9 @@ final class ProfilePickerController: NSObject, NSTableViewDataSource, NSTableVie
             scrollView.leadingAnchor.constraint(equalTo: searchSurface.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: searchSurface.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: scopePopup.topAnchor, constant: -16),
+            emptyLabel.centerYAnchor.constraint(equalTo: scrollView.centerYAnchor),
+            emptyLabel.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 16),
+            emptyLabel.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -16),
             scopePopup.leadingAnchor.constraint(equalTo: searchSurface.leadingAnchor),
             scopePopup.trailingAnchor.constraint(equalTo: openButton.leadingAnchor, constant: -12),
             scopePopup.bottomAnchor.constraint(equalTo: customPath.topAnchor, constant: -8),
@@ -189,11 +211,7 @@ final class ProfilePickerController: NSObject, NSTableViewDataSource, NSTableVie
         self.onPick = onPick
         currentURL = url
         applyTheme(AppSettings.shared.overlayTheme)
-        allChoices = browsers.flatMap { browser in
-            browser.profiles.isEmpty
-                ? [ProfileChoice(browser: browser, profile: nil)]
-                : browser.profiles.map { ProfileChoice(browser: browser, profile: $0) }
-        }
+        allChoices = ProfileChoice.pickerChoices(for: browsers)
         choices = allChoices
         searchField.stringValue = ""
         urlLabel.stringValue = url.absoluteString
@@ -212,6 +230,7 @@ final class ProfilePickerController: NSObject, NSTableViewDataSource, NSTableVie
         if !choices.isEmpty {
             tableView.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
         }
+        updateOpenButton()
 
         panel.center()
         panel.makeKeyAndOrderFront(nil)
@@ -276,7 +295,7 @@ final class ProfilePickerController: NSObject, NSTableViewDataSource, NSTableVie
             .lowercased()
         choices = query.isEmpty ? allChoices : allChoices.filter {
             $0.browser.displayName.lowercased().contains(query)
-                || ($0.profile?.displayName.lowercased().contains(query) ?? false)
+                || $0.displayProfile.displayName.lowercased().contains(query)
         }
         tableView.reloadData()
         if !choices.isEmpty {
@@ -311,6 +330,10 @@ final class ProfilePickerController: NSObject, NSTableViewDataSource, NSTableVie
     }
 
     private func updateOpenButton() {
+        emptyLabel.isHidden = !choices.isEmpty
+        emptyLabel.stringValue = allChoices.isEmpty
+            ? "No profiles available. Enable Show in picker in Settings → Browsers, or rescan your browsers."
+            : "No matching profiles. Try a different search."
         let remembering = scopePopup.indexOfSelectedItem > 0
         openButton.title = remembering ? "Save & Open" : "Open"
         openButton.isEnabled = choices.indices.contains(tableView.selectedRow)
@@ -338,6 +361,7 @@ final class ProfilePickerController: NSObject, NSTableViewDataSource, NSTableVie
         searchField.textColor = text ?? .labelColor
         urlLabel.textColor = text ?? .secondaryLabelColor
         scopeHint.textColor = text ?? .secondaryLabelColor
+        emptyLabel.textColor = text ?? .secondaryLabelColor
     }
 
     @objc private func confirmSelection() {
@@ -433,8 +457,8 @@ private final class ProfileChoiceCellView: NSTableCellView {
 
     func configure(choice: ProfileChoice) {
         browserIcon.image = NSWorkspace.shared.icon(forFile: choice.browser.applicationURL.path)
-        colorDot.layer?.backgroundColor = (choice.profile?.displayColor ?? .tertiaryLabelColor).cgColor
-        titleLabel.stringValue = choice.profile?.displayName ?? "Default profile"
+        colorDot.layer?.backgroundColor = choice.displayProfile.displayColor.cgColor
+        titleLabel.stringValue = choice.displayProfile.displayName
         subtitleLabel.stringValue = choice.browser.displayName
     }
 
