@@ -1,0 +1,51 @@
+name: Documentation
+
+on:
+  push:
+    paths:
+      - "**/*.md"
+      - "**/*.markdown"
+      - "Resources/Transom.png"
+      - ".rumdl.toml"
+      - ".typos.toml"
+      - "hk.pkl"
+      - "mise.toml"
+      - ".github/workflows/docs.yml"
+  pull_request:
+    paths:
+      - "**/*.md"
+      - "**/*.markdown"
+      - "Resources/Transom.png"
+      - ".rumdl.toml"
+      - ".typos.toml"
+      - "hk.pkl"
+      - "mise.toml"
+      - ".github/workflows/docs.yml"
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
+      - run: mise run lint
+  links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
+      - run: mise run lint:links
