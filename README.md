@@ -80,6 +80,8 @@ Unmatched links open a Spotlight-style profile picker with:
 - saved destinations for an entire site, a path and its subpaths, or an
   exact path, including custom paths
 
+![URL picker with profiles and routing scopes](docs/assets/launcher.png)
+
 The **Links** section in Settings supports mappings using:
 
 - host globs such as `*.example.com`
