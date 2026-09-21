@@ -29,11 +29,35 @@ jobs:
       tag: ${{ steps.retry.outputs.tag || steps.release.outputs.tag_name }}
       sha: ${{ steps.retry.outputs.sha || steps.release.outputs.sha }}
     steps:
-      - uses: googleapis/release-please-action@8b8fd2cc23b2e18957157a9d923d75aa0c6f6ad5 # v4
+      - name: Create releases from merged release PRs
+        uses: googleapis/release-please-action@8b8fd2cc23b2e18957157a9d923d75aa0c6f6ad5 # v4
         if: inputs.draft_tag == ''
         id: release
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+          skip-github-pull-request: true
+      - name: Check for unpublished drafts
+        if: inputs.draft_tag == ''
+        id: drafts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          drafts="$(gh api --paginate "repos/$GH_REPO/releases?per_page=100" --jq '.[] | select(.draft) | .id')"
+          if [[ -n "$drafts" ]]; then
+            echo 'blocked=true' >> "$GITHUB_OUTPUT"
+            echo 'Waiting for draft publication before proposing another release.'
+          else
+            echo 'blocked=false' >> "$GITHUB_OUTPUT"
+          fi
+      # Drafts have no published release/tag boundary. Do not let the PR
+      # generator count previously released commits again during that gap.
+      - name: Propose the next release only after publication
+        if: inputs.draft_tag == '' && steps.release.outputs.release_created != 'true' && steps.drafts.outputs.blocked == 'false'
+        uses: googleapis/release-please-action@8b8fd2cc23b2e18957157a9d923d75aa0c6f6ad5 # v4
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+          skip-github-release: true
       - name: Resolve an existing draft for retry
         if: inputs.draft_tag != ''
         id: retry
