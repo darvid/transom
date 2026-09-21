@@ -1,0 +1,133 @@
+name: Release
+
+on:
+  push:
+  workflow_dispatch:
+    inputs:
+      draft_tag:
+        description: Existing draft release tag to rebuild (leave blank to run release-please)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    outputs:
+      created: ${{ steps.retry.outputs.created || steps.release.outputs.release_created }}
+      tag: ${{ steps.retry.outputs.tag || steps.release.outputs.tag_name }}
+      sha: ${{ steps.retry.outputs.sha || steps.release.outputs.sha }}
+    steps:
+      - uses: googleapis/release-please-action@8b8fd2cc23b2e18957157a9d923d75aa0c6f6ad5 # v4
+        if: inputs.draft_tag == ''
+        id: release
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+      - name: Resolve an existing draft for retry
+        if: inputs.draft_tag != ''
+        id: retry
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.draft_tag }}
+        run: |
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test "$(gh release view "$TAG" --json isDraft --jq .isDraft)" = true
+          ref="$(gh release view "$TAG" --json targetCommitish --jq .targetCommitish)"
+          sha="$(gh api "repos/$GH_REPO/commits/$ref" --jq .sha)"
+          [[ "$sha" =~ ^[a-f0-9]{40}$ ]]
+          printf 'created=true\ntag=%s\nsha=%s\n' "$TAG" "$sha" >> "$GITHUB_OUTPUT"
+
+  build-release:
+    needs: prepare
+    if: needs.prepare.outputs.created == 'true'
+    runs-on: macos-15
+    environment: release
+    permissions:
+      contents: write
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+      SIGNING_IDENTITY: ${{ vars.SIGNING_IDENTITY }}
+      NOTARY_PROFILE: transom-notary
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          persist-credentials: false
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
+      - name: Verify version and run checks
+        run: |
+          test "$(uname -m)" = arm64
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test "$(< version.txt)" = "${RELEASE_TAG#v}"
+          mise run check
+          mise run test
+      - name: Import signing identity and notarization credentials
+        env:
+          APPLE_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+          KEYCHAIN_PATH: ${{ runner.temp }}/transom-signing.keychain-db
+        run: |
+          : "${SIGNING_IDENTITY:?Set SIGNING_IDENTITY}"
+          : "${APPLE_TEAM_ID:?Set APPLE_TEAM_ID}"
+          : "${APPLE_CERTIFICATE_P12_BASE64:?Set APPLE_CERTIFICATE_P12_BASE64}"
+          : "${APPLE_CERTIFICATE_PASSWORD:?Set APPLE_CERTIFICATE_PASSWORD}"
+          : "${APPLE_ID:?Set APPLE_ID}"
+          : "${APPLE_APP_SPECIFIC_PASSWORD:?Set APPLE_APP_SPECIFIC_PASSWORD}"
+          password="$(openssl rand -hex 32)"
+          echo "::add-mask::$password"
+          security create-keychain -p "$password" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$password" "$KEYCHAIN_PATH"
+          printf '%s' "$APPLE_CERTIFICATE_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/signing.p12"
+          security import "$RUNNER_TEMP/signing.p12" -k "$KEYCHAIN_PATH" \
+            -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$password" "$KEYCHAIN_PATH" >/dev/null
+          security list-keychains -d user -s "$KEYCHAIN_PATH" "$HOME/Library/Keychains/login.keychain-db"
+          xcrun notarytool store-credentials "$NOTARY_PROFILE" \
+            --keychain "$KEYCHAIN_PATH" --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD"
+          printf 'NOTARY_KEYCHAIN=%s\n' "$KEYCHAIN_PATH" >> "$GITHUB_ENV"
+          rm -f "$RUNNER_TEMP/signing.p12"
+      - name: Build and notarize DMG
+        run: mise run release
+      - name: Attach verified artifacts to the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = true
+          gh release upload "$RELEASE_TAG" \
+            ".build/distribution/Transom-${RELEASE_TAG#v}-arm64.dmg" \
+            .build/distribution/SHA256SUMS --clobber
+      - name: Preserve notarization diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: notarization-${{ needs.prepare.outputs.tag }}
+          path: .build/distribution/notarization*.json
+          if-no-files-found: ignore
+      - name: Remove signing credentials
+        if: always()
+        env:
+          KEYCHAIN_PATH: ${{ runner.temp }}/transom-signing.keychain-db
+        run: |
+          if [[ -f "$KEYCHAIN_PATH" ]]; then
+            security delete-keychain "$KEYCHAIN_PATH"
+          fi
+          rm -f "$RUNNER_TEMP/signing.p12"

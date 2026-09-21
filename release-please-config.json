@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "packages": {
+    ".": {
+      "release-type": "simple",
+      "initial-version": "0.1.0",
+      "package-name": "Transom",
+      "include-component-in-tag": false,
+      "draft": true,
+      "bump-minor-pre-major": true
+    }
+  }
+}

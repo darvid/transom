@@ -1,0 +1,6 @@
+.build/
+.DS_Store
+.swiftpm/
+mise.local.toml
+*.p12
+*.p8

@@ -1,0 +1,38 @@
+[tasks.build]
+description = "Build the debug executable"
+run = "swift build"
+
+[tasks.app]
+description = "Build the local ad-hoc signed app"
+run = "./scripts/build-app.sh release"
+
+[tasks.signed-app]
+description = "Build a Developer ID-signed app without notarization"
+run = "./scripts/build-app.sh release developer-id"
+
+[tasks.release]
+description = "Upload the signed DMG to Apple, notarize, staple, and checksum"
+depends = ["dmg"]
+run = "bash ./scripts/notarize-app.sh"
+
+[tasks.dmg]
+description = "Build an arm64 Developer ID-signed DMG without notarization"
+depends = ["signed-app"]
+run = "bash ./scripts/package-dmg.sh"
+
+[tasks.run]
+description = "Build and launch the local app"
+depends = ["app"]
+run = "open .build/Transom.app"
+
+[tasks.check]
+description = "Check the release build and app property list"
+run = ["swift build --configuration release", "plutil -lint Resources/Info.plist"]
+
+[tasks.test]
+description = "Run the Swift tests"
+run = "swift test"
+
+[tasks.clean]
+description = "Clean Swift build artifacts"
+run = "swift package clean"
