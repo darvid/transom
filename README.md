@@ -65,10 +65,6 @@ profile.
 - normal macOS window layering, spaces, and fullscreen support
 - menu-bar accessory operation with no Dock icon
 
-macOS does not allow one application to re-parent another application's
-`NSWindow`. Transom creates the container illusion by aligning native
-browser windows and synchronizing them through the Accessibility API.
-
 ## Web-link routing
 
 Transom registers `http` and `https` handlers and can be selected as the
