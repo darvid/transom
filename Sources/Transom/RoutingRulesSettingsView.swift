@@ -147,8 +147,8 @@ final class RoutingRulesSettingsView: NSView, NSTableViewDataSource, NSTableView
     @objc private func addRule() {
         let pattern = patternField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !pattern.isEmpty,
-            matcherPopup.indexOfSelectedItem >= 0,
-            registry.browsers.indices.contains(browserPopup.indexOfSelectedItem)
+              matcherPopup.indexOfSelectedItem >= 0,
+              registry.browsers.indices.contains(browserPopup.indexOfSelectedItem)
         else {
             NSSound.beep()
             return

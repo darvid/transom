@@ -343,7 +343,7 @@ final class ProfilePickerController: NSObject, NSTableViewDataSource, NSTableVie
     @objc private func confirmSelection() {
         let row = tableView.selectedRow
         guard choices.indices.contains(row),
-            scopePopup.indexOfSelectedItem == 0 || selectedScope != nil
+              scopePopup.indexOfSelectedItem == 0 || selectedScope != nil
         else { return }
         let choice = choices[row]
         let scope = selectedScope

@@ -250,7 +250,7 @@ private final class NativeTabControl: NSSegmentedControl {
     private func segment(at point: CGPoint) -> Int? {
         guard bounds.contains(point) else { return nil }
         var leadingEdge: CGFloat = 0
-        for index in 0..<segmentCount {
+        for index in 0 ..< segmentCount {
             let trailingEdge = leadingEdge + width(forSegment: index)
             if point.x >= leadingEdge, point.x < trailingEdge {
                 return index

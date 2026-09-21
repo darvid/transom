@@ -25,7 +25,7 @@ struct AccessibilityController {
 
     func document(of element: AXUIElement) -> String? {
         guard let document = attribute(kAXDocumentAttribute, from: element) as? String,
-            !document.isEmpty
+              !document.isEmpty
         else {
             return nil
         }

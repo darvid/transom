@@ -23,7 +23,7 @@ enum ProcessArguments {
             let start = index
             while index < size, buffer[index] != 0 { index += 1 }
             if index > start {
-                result.append(String(decoding: buffer[start..<index], as: UTF8.self))
+                result.append(String(decoding: buffer[start ..< index], as: UTF8.self))
             }
             while index < size, buffer[index] == 0 { index += 1 }
         }

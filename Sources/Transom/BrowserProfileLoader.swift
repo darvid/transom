@@ -164,11 +164,11 @@ enum BrowserProfileLoader {
         let intermediate = chroma * (1 - abs(hueSection.truncatingRemainder(dividingBy: 2) - 1))
         let base: (CGFloat, CGFloat, CGFloat)
         switch hueSection {
-        case 0..<1: base = (chroma, intermediate, 0)
-        case 1..<2: base = (intermediate, chroma, 0)
-        case 2..<3: base = (0, chroma, intermediate)
-        case 3..<4: base = (0, intermediate, chroma)
-        case 4..<5: base = (intermediate, 0, chroma)
+        case 0 ..< 1: base = (chroma, intermediate, 0)
+        case 1 ..< 2: base = (intermediate, chroma, 0)
+        case 2 ..< 3: base = (0, chroma, intermediate)
+        case 3 ..< 4: base = (0, intermediate, chroma)
+        case 4 ..< 5: base = (intermediate, 0, chroma)
         default: base = (chroma, 0, intermediate)
         }
         let offset = adaptedLightness - chroma / 2

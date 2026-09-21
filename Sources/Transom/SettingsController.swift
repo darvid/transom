@@ -317,7 +317,7 @@ final class SettingsController: NSObject, NSTextFieldDelegate {
 
     private var isDefaultBrowser: Bool {
         guard let url = URL(string: "https://example.com"),
-            let applicationURL = NSWorkspace.shared.urlForApplication(toOpen: url)
+              let applicationURL = NSWorkspace.shared.urlForApplication(toOpen: url)
         else {
             return false
         }

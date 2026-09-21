@@ -41,11 +41,11 @@ struct RoutingScope: Equatable {
 
     init?(host: String, path: String, exact: Bool = false) {
         guard !host.isEmpty, !host.contains("*"),
-            path.isEmpty || path.hasPrefix("/"),
-            let components = URLComponents(string: "https://\(host)\(path)"),
-            components.host?.lowercased() == host.lowercased(),
-            components.user == nil, components.password == nil,
-            components.port == nil, components.query == nil, components.fragment == nil
+              path.isEmpty || path.hasPrefix("/"),
+              let components = URLComponents(string: "https://\(host)\(path)"),
+              components.host?.lowercased() == host.lowercased(),
+              components.user == nil, components.password == nil,
+              components.port == nil, components.query == nil, components.fragment == nil
         else { return nil }
         self.host = host.lowercased()
         let encoded = components.percentEncodedPath
@@ -66,7 +66,7 @@ struct RoutingScope: Equatable {
 
     func matches(_ url: URL) -> Bool {
         guard url.host?.lowercased() == host,
-            let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+              let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
         else { return false }
         let candidate = components.percentEncodedPath.isEmpty ? "/" : components.percentEncodedPath
         return exact ? candidate == path
@@ -75,8 +75,8 @@ struct RoutingScope: Equatable {
 
     static func suggestions(for url: URL) -> [RoutingScope] {
         guard let host = url.host,
-            let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-            let site = RoutingScope(host: host, path: "")
+              let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let site = RoutingScope(host: host, path: "")
         else { return [] }
         var scopes = [site]
         var path = ""
@@ -130,7 +130,7 @@ final class RoutingStore {
     func add(_ rule: RoutingRule) {
         var rule = rule
         if rule.matcher == .hostPathPrefix || rule.matcher == .hostPathExact,
-            let scope = RoutingScope(pattern: rule.pattern, exact: rule.matcher == .hostPathExact)
+           let scope = RoutingScope(pattern: rule.pattern, exact: rule.matcher == .hostPathExact)
         {
             rule.pattern = scope.pattern
         }
@@ -280,8 +280,8 @@ struct DefaultBrowserRegistrar {
         }
         let remaining = Array(schemes.dropFirst())
         if let url = URL(string: "\(scheme)://example.com"),
-            NSWorkspace.shared.urlForApplication(toOpen: url)?.standardizedFileURL
-                == applicationURL.standardizedFileURL
+           NSWorkspace.shared.urlForApplication(toOpen: url)?.standardizedFileURL
+           == applicationURL.standardizedFileURL
         {
             registerNext(schemes: remaining, applicationURL: applicationURL, completion: completion)
         } else {

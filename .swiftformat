@@ -1,0 +1,6 @@
+# Only layout and whitespace rules; no syntax or API transformations.
+--rules indent,linebreaks,linebreakAtEndOfFile,consecutiveBlankLines,trailingSpace,spaceAroundBraces,spaceAroundBrackets,spaceAroundOperators,spaceAroundParens,spaceInsideBraces,spaceInsideBrackets,spaceInsideParens
+--indent 4
+--linebreaks lf
+--swift-version 6.0
+--exclude .build,.swiftpm
