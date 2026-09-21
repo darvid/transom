@@ -105,6 +105,8 @@ link routing, and overlay themes.
 Themes include Automatic, Light, Black, and all four Catppuccin flavors:
 Latte, Frappé, Macchiato, and Mocha. The URL opener follows the selected
 theme. Profile names and colors can be customized in **Browsers**.
+Turn off **Show in picker** beside a profile to hide it from the URL
+opener. Existing routing rules can still open that profile.
 
 ## Build from source
 

@@ -3,6 +3,7 @@ import Foundation
 struct BrowserProfileOverride: Codable, Equatable {
     var displayName: String?
     var colorHex: String?
+    var hiddenFromPicker: Bool?
 }
 
 enum OverlayTheme: String, CaseIterable {
@@ -49,7 +50,7 @@ final class AppSettings {
 
     private let defaults: UserDefaults
 
-    private init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         defaults.register(defaults: [
             Key.tileManagerCompatibility: true,
@@ -104,6 +105,16 @@ final class AppSettings {
         }
     }
 
+    func isProfileVisibleInPicker(browser: BrowserKind, profileID: String) -> Bool {
+        profileOverride(browser: browser, profileID: profileID)?.hiddenFromPicker != true
+    }
+
+    func setProfileVisibleInPicker(_ visible: Bool, browser: BrowserKind, profileID: String) {
+        updateProfileOverride(browser: browser, profileID: profileID) {
+            $0.hiddenFromPicker = visible ? nil : true
+        }
+    }
+
     private var profileOverrides: [String: BrowserProfileOverride] {
         get {
             guard let data = defaults.data(forKey: Key.browserProfileOverrides) else {
@@ -127,7 +138,8 @@ final class AppSettings {
         let key = Self.profileKey(browser: browser, profileID: profileID)
         var profileOverride = overrides[key] ?? BrowserProfileOverride()
         update(&profileOverride)
-        if profileOverride.displayName == nil, profileOverride.colorHex == nil {
+        if profileOverride.displayName == nil, profileOverride.colorHex == nil,
+           profileOverride.hiddenFromPicker != true {
             overrides.removeValue(forKey: key)
         } else {
             overrides[key] = profileOverride

@@ -409,7 +409,9 @@ final class SettingsController: NSObject, NSTextFieldDelegate {
         let header = browserHeaderRow(browser)
         stack.addArrangedSubview(header)
         header.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
-        for profile in browser.profiles {
+        let profiles = browser.profiles.isEmpty
+            ? [BrowserProfile.pickerDefault(browser: browser.kind)] : browser.profiles
+        for profile in profiles {
             let divider = separator()
             stack.addArrangedSubview(divider)
             divider.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
@@ -521,10 +523,33 @@ final class SettingsController: NSObject, NSTextFieldDelegate {
         }
         nameStack.translatesAutoresizingMaskIntoConstraints = false
 
+        let visibilitySwitch = ProfileVisibilitySwitch()
+        visibilitySwitch.browser = browser
+        visibilitySwitch.profileID = profile.id
+        visibilitySwitch.state = AppSettings.shared.isProfileVisibleInPicker(
+            browser: browser, profileID: profile.id
+        ) ? .on : .off
+        visibilitySwitch.controlSize = .small
+        visibilitySwitch.target = self
+        visibilitySwitch.action = #selector(profileVisibilityChanged(_:))
+        visibilitySwitch.setAccessibilityLabel("Show \(profile.displayName) in picker")
+        visibilitySwitch.toolTip = "Show this profile in the URL opener. Existing routing rules still apply."
+        let visibilityLabel = NSTextField(labelWithString: "Show in picker")
+        visibilityLabel.font = .systemFont(ofSize: 11.5)
+        visibilityLabel.textColor = .secondaryLabelColor
+        let visibilityControls = NSStackView(views: [visibilityLabel, visibilitySwitch])
+        visibilityControls.orientation = .horizontal
+        visibilityControls.alignment = .centerY
+        visibilityControls.spacing = 6
+        visibilityControls.translatesAutoresizingMaskIntoConstraints = false
+        let preferredNameWidth = nameField.widthAnchor.constraint(equalToConstant: 260)
+        preferredNameWidth.priority = .defaultHigh
+
         let row = NSView()
         row.addSubview(nameStack)
         row.addSubview(colorWell)
         row.addSubview(colorControls)
+        row.addSubview(visibilityControls)
         NSLayoutConstraint.activate([
             row.heightAnchor.constraint(greaterThanOrEqualToConstant: 62),
             colorWell.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 44),
@@ -533,12 +558,15 @@ final class SettingsController: NSObject, NSTextFieldDelegate {
             nameStack.centerYAnchor.constraint(equalTo: row.centerYAnchor),
             nameStack.trailingAnchor.constraint(equalTo: nameField.trailingAnchor),
             colorControls.leadingAnchor.constraint(equalTo: nameStack.trailingAnchor, constant: 12),
-            nameField.widthAnchor.constraint(equalToConstant: 260),
+            preferredNameWidth,
+            nameField.widthAnchor.constraint(greaterThanOrEqualToConstant: 140),
             nameField.heightAnchor.constraint(greaterThanOrEqualToConstant: 30),
             colorWell.widthAnchor.constraint(equalToConstant: 28),
             colorWell.heightAnchor.constraint(equalToConstant: 28),
-            colorControls.trailingAnchor.constraint(lessThanOrEqualTo: row.trailingAnchor, constant: -4),
+            colorControls.trailingAnchor.constraint(lessThanOrEqualTo: visibilityControls.leadingAnchor, constant: -12),
             colorControls.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+            visibilityControls.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -4),
+            visibilityControls.centerYAnchor.constraint(equalTo: row.centerYAnchor),
         ])
         return row
     }
@@ -612,6 +640,12 @@ final class SettingsController: NSObject, NSTextFieldDelegate {
         profileCustomizationChanged(rebuildSettings: false)
     }
 
+    @objc private func profileVisibilityChanged(_ sender: ProfileVisibilitySwitch) {
+        AppSettings.shared.setProfileVisibleInPicker(
+            sender.state == .on, browser: sender.browser, profileID: sender.profileID
+        )
+    }
+
     @objc private func resetProfileColor(_ sender: ProfileColorResetButton) {
         AppSettings.shared.setProfileColor(
             nil,
@@ -638,6 +672,11 @@ final class SettingsController: NSObject, NSTextFieldDelegate {
 }
 
 private final class ProfileNameField: NSTextField {
+    var browser = BrowserKind.chrome
+    var profileID = ""
+}
+
+private final class ProfileVisibilitySwitch: NSSwitch {
     var browser = BrowserKind.chrome
     var profileID = ""
 }
