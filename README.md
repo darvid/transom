@@ -9,6 +9,29 @@ groups windows from the same browser into a profile-oriented stack, adds
 a glass tab strip above the browser, and keeps grouped windows together
 when moved or resized.
 
+## Install
+
+Requires macOS 13 or later on an Apple silicon Mac (M1 or newer).
+Current releases do not support Intel Macs.
+
+1. Open the [latest release](https://github.com/darvid/transom/releases/latest)
+   and download `Transom-VERSION-arm64.dmg` from **Assets**.
+2. Open the DMG and drag **Transom** into **Applications**.
+3. Eject the disk image, then open Transom from Applications. Transom
+   runs in the menu bar; it does not show a Dock icon.
+4. Grant access in **System Settings → Privacy & Security →
+   Accessibility**. Reopen Transom if the browser overlay does not
+   appear after granting access.
+5. To route web links through the profile picker, choose **Make Transom
+   Default Browser…** from its menu-bar menu and confirm the system
+   prompt.
+
+Release downloads are Developer ID–signed and notarized by Apple.
+
+To update, quit Transom from its menu-bar menu, download the latest DMG,
+and replace the existing app in Applications. Your settings remain in
+your user account.
+
 ## Supported browsers
 
 Transom discovers installed macOS versions of:
@@ -84,15 +107,11 @@ Themes include Automatic, Light, Black, and all four Catppuccin flavors:
 Latte, Frappé, Macchiato, and Mocha. The URL opener follows the selected
 theme. Profile names and colors can be customized in **Browsers**.
 
-## Run
+## Build from source
 
 ```bash
 mise run run
 ```
-
-On first launch, grant Transom access in **System Settings → Privacy &
-Security → Accessibility**. Reopen Transom after granting access if the
-overlay does not appear immediately.
 
 To run checks:
 
