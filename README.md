@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="Resources/Transom.png" alt="Transom logo" width="160" height="160">
+</p>
+
 # Transom
 
 Transom is a native macOS browser-profile shell and web-link router. It
