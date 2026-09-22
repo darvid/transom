@@ -120,6 +120,9 @@ final class ProfilePickerController: NSObject, NSTableViewDataSource, NSTableVie
         urlLabel.font = .systemFont(ofSize: 12.5, weight: .medium)
         urlLabel.textColor = .secondaryLabelColor
         urlLabel.lineBreakMode = .byTruncatingMiddle
+        urlLabel.maximumNumberOfLines = 1
+        urlLabel.cell?.usesSingleLineMode = true
+        urlLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         urlLabel.translatesAutoresizingMaskIntoConstraints = false
 
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("profile"))
@@ -150,15 +153,18 @@ final class ProfilePickerController: NSObject, NSTableViewDataSource, NSTableVie
         scopePopup.target = self
         scopePopup.action = #selector(scopeChanged)
         scopePopup.cell?.lineBreakMode = .byTruncatingMiddle
+        scopePopup.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         scopePopup.setAccessibilityLabel("Remember link scope")
         scopePopup.translatesAutoresizingMaskIntoConstraints = false
         customPath.placeholderString = "/organization/repository"
         customPath.bezelStyle = .roundedBezel
+        customPath.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         customPath.delegate = self
         customPath.setAccessibilityLabel("Custom path on this site")
         customPath.translatesAutoresizingMaskIntoConstraints = false
         scopeHint.font = .systemFont(ofSize: 11.5)
         scopeHint.textColor = .secondaryLabelColor
+        scopeHint.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         scopeHint.translatesAutoresizingMaskIntoConstraints = false
         openButton.bezelStyle = .rounded
         openButton.target = self
@@ -215,6 +221,7 @@ final class ProfilePickerController: NSObject, NSTableViewDataSource, NSTableVie
         choices = allChoices
         searchField.stringValue = ""
         urlLabel.stringValue = url.absoluteString
+        urlLabel.toolTip = url.absoluteString
         scopes = RoutingScope.suggestions(for: url)
         scopePopup.removeAllItems()
         scopePopup.addItem(withTitle: "Open once · Always open…")
