@@ -1,12 +1,16 @@
 import AppKit
 import ApplicationServices
 import CoreGraphics
+import OSLog
 
 final class BrowserWindowDiscovery {
     let registry: BrowserRegistry
     private let accessibility = AccessibilityController()
     private var profileAssignments: [WindowIdentity: BrowserProfile] = [:]
     private var contentWindowIdentities = Set<WindowIdentity>()
+    private var recovery = WindowDiscoveryRecovery()
+    private let logger = Logger(subsystem: "com.transom.app", category: "WindowDiscovery")
+    private var lastDiagnostic = ""
 
     init(registry: BrowserRegistry = BrowserRegistry()) {
         self.registry = registry
@@ -27,7 +31,13 @@ final class BrowserWindowDiscovery {
     }
 
     func discover() -> [BrowserWindow] {
-        guard accessibility.isTrusted else { return [] }
+        guard accessibility.isTrusted else {
+            recovery = WindowDiscoveryRecovery()
+            profileAssignments.removeAll()
+            contentWindowIdentities.removeAll()
+            logTransition("Accessibility permission unavailable")
+            return []
+        }
 
         let options: CGWindowListOption = [
             .optionOnScreenOnly,
@@ -37,13 +47,57 @@ final class BrowserWindowDiscovery {
             options,
             kCGNullWindowID
         ) as? [[String: Any]] else {
-            return []
+            let windows = recovery.resolve(
+                visibleWindows: nil, observed: [], now: ProcessInfo.processInfo.systemUptime
+            )
+            logTransition("WindowServer snapshot failed; retained=\(recovery.retainedCount), expired=\(recovery.expiredCount)")
+            return windows
         }
 
-        let candidates = rawWindows.compactMap(candidate(from:))
+        var candidates = rawWindows.compactMap(candidate(from:))
+        let listedIDs = Set(candidates.map {
+            WindowIdentity(id: $0.id, pid: $0.pid, browser: $0.browser.kind)
+        })
+        let missingIDs = recovery.cachedIdentities.subtracting(listedIDs)
+        if !missingIDs.isEmpty {
+            // The on-screen-only snapshot can omit a window for one poll.
+            // Corroborate removals with an independent full WindowServer list;
+            // never restore windows explicitly marked off-screen or minimized.
+            if let fullList = CGWindowListCopyWindowInfo(
+                [.optionAll, .excludeDesktopElements], kCGNullWindowID
+            ) as? [[String: Any]] {
+                let corroborated = fullList.filter {
+                    ($0[kCGWindowIsOnscreen as String] as? NSNumber)?.boolValue == true
+                }.compactMap(candidate(from:))
+                let recovered = corroborated.filter {
+                    missingIDs.contains(WindowIdentity(id: $0.id, pid: $0.pid, browser: $0.browser.kind))
+                }
+                if !recovered.isEmpty {
+                    let byID = Dictionary(uniqueKeysWithValues: (candidates + recovered).map { ($0.id, $0) })
+                    // Preserve the full snapshot's front-to-back order when
+                    // repairing the fast snapshot, not the recovery order.
+                    let orderedIDs = fullList.compactMap { ($0[kCGWindowNumber as String] as? NSNumber)?.uint32Value }
+                    candidates = orderedIDs.compactMap { byID[$0] }
+                    logger.notice("Repaired visible-window snapshot: omitted=\(missingIDs.count), recovered=\(recovered.count)")
+                } else {
+                    logger.notice("WindowServer confirms missing candidates: missing=\(missingIDs.count), rawOnScreen=\(rawWindows.count), rawAll=\(fullList.count)")
+                }
+            } else {
+                // Both sources are uncertain. Apply the bounded recovery path
+                // instead of treating an unconfirmed absence as a closure.
+                let windows = recovery.resolve(visibleWindows: nil, observed: [], now: ProcessInfo.processInfo.systemUptime)
+                logTransition("WindowServer confirmation failed; retained=\(recovery.retainedCount), expired=\(recovery.expiredCount)")
+                return windows
+            }
+        }
         let candidatesByPID = Dictionary(grouping: candidates, by: \.pid)
         var result: [BrowserWindow] = []
-        var liveIdentities = Set<WindowIdentity>()
+        let visibleWindows = candidates.map {
+            WindowDiscoveryRecovery.VisibleWindow(
+                identity: WindowIdentity(id: $0.id, pid: $0.pid, browser: $0.browser.kind), frame: $0.frame
+            )
+        }
+        let liveIdentities = Set(visibleWindows.map(\.identity))
 
         for (pid, processCandidates) in candidatesByPID {
             let elements = accessibility.windows(for: pid)
@@ -72,7 +126,6 @@ final class BrowserWindowDiscovery {
                     continue
                 }
                 contentWindowIdentities.insert(identity)
-                liveIdentities.insert(identity)
 
                 let accessibilityTitle = accessibility.title(of: element)
                 let title = accessibilityTitle.isEmpty
@@ -110,12 +163,17 @@ final class BrowserWindowDiscovery {
         }
         contentWindowIdentities.formIntersection(liveIdentities)
 
-        let zOrder = Dictionary(
-            uniqueKeysWithValues: candidates.enumerated().map { ($0.element.id, $0.offset) }
+        let windows = recovery.resolve(
+            visibleWindows: visibleWindows, observed: result, now: ProcessInfo.processInfo.systemUptime
         )
-        return result.sorted {
-            zOrder[$0.id, default: .max] < zOrder[$1.id, default: .max]
-        }
+        logTransition("Visible candidates=\(candidates.count), matched=\(result.count), retained=\(recovery.retainedCount), expired=\(recovery.expiredCount)")
+        return windows
+    }
+
+    private func logTransition(_ diagnostic: String) {
+        guard diagnostic != lastDiagnostic else { return }
+        lastDiagnostic = diagnostic
+        logger.notice("\(diagnostic, privacy: .public)")
     }
 
     private func candidate(from dictionary: [String: Any]) -> BrowserWindowCandidate? {
@@ -205,12 +263,6 @@ final class BrowserWindowDiscovery {
 
         return result
     }
-}
-
-private struct WindowIdentity: Hashable {
-    let id: CGWindowID
-    let pid: pid_t
-    let browser: BrowserKind
 }
 
 private struct BrowserWindowCandidate {

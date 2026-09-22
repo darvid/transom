@@ -1,4 +1,5 @@
 import AppKit
+import OSLog
 
 final class WorkspaceController: NSObject, NSMenuDelegate {
     var onShowSettings: (() -> Void)?
@@ -7,6 +8,7 @@ final class WorkspaceController: NSObject, NSMenuDelegate {
 
     private let accessibility = AccessibilityController()
     private let discovery: BrowserWindowDiscovery
+    private let logger = Logger(subsystem: "com.transom.app", category: "OverlayVisibility")
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private var containers: [BrowserKind: ContainerController] = [:]
     private var windowIDsByBrowser: [BrowserKind: [CGWindowID]] = [:]
@@ -234,6 +236,9 @@ final class WorkspaceController: NSObject, NSMenuDelegate {
         }
 
         for (kind, container) in containers where !runningKinds.contains(kind) {
+            if !(windowIDsByBrowser[kind] ?? []).isEmpty {
+                logger.notice("Hiding \(kind.rawValue, privacy: .public) overlay: discovery returned no usable visible windows")
+            }
             container.update(windows: [])
             container.setVisible(false)
             windowIDsByBrowser[kind] = []
