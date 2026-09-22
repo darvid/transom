@@ -1,8 +1,10 @@
 import AppKit
+import OSLog
 
 final class ContainerController {
     let browser: InstalledBrowser
     private let accessibility = AccessibilityController()
+    private let logger = Logger(subsystem: "com.transom.app", category: "OverlayPanels")
     private let shellPanel: NSPanel
     private let shellView: ContainerShellView
     private let tabPanel: NSPanel
@@ -560,6 +562,7 @@ final class ContainerController {
             && AppSettings.shared.keepOverlayAboveInactiveWindows
             ? selectedWindowID
             : (bottomWindowID ?? selectedWindowID)
+        logger.notice("Ordering \(self.browser.kind.rawValue, privacy: .public) panels: selected=\(selectedWindowID), previous=\(self.lastOrderedSelectionID ?? 0), active=\(browserIsActive), tabsVisible=\(self.tabPanel.isVisible), glassVisible=\(self.shellPanel.isVisible)")
         shellPanel.order(.below, relativeTo: Int(shellAnchorID))
         tabPanel.order(.above, relativeTo: Int(selectedWindowID))
         for handle in resizeHandles {
@@ -570,6 +573,9 @@ final class ContainerController {
     }
 
     private func hide() {
+        if shellPanel.isVisible || tabPanel.isVisible {
+            logger.notice("Ordering out \(self.browser.kind.rawValue, privacy: .public) panels: windows=\(self.windows.count), requestedVisible=\(self.isVisible)")
+        }
         shellPanel.orderOut(nil)
         tabPanel.orderOut(nil)
         for handle in resizeHandles {
