@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/darvid/transom/compare/v0.2.0...v0.2.1) (2026-09-22)
+
+
+### Bug Fixes
+
+* **overlay:** recover from transient window discovery gaps ([#13](https://github.com/darvid/transom/issues/13)) ([0185a6d](https://github.com/darvid/transom/commit/0185a6d1140895c654602f3291f5595bd276897a))
+* **picker:** truncate long URLs within the opener ([#15](https://github.com/darvid/transom/issues/15)) ([ca62a08](https://github.com/darvid/transom/commit/ca62a08226546cc32c118a2e0bc0770d86d68f71))
+
 ## [0.2.0](https://github.com/darvid/transom/compare/v0.1.0...v0.2.0) (2026-09-21)
 
 
