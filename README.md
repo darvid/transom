@@ -11,6 +11,27 @@ when moved or resized.
 
 ![Transom profile tabs above a browser window](docs/assets/readme-screenshot.png)
 
+## Use cases
+
+Opening a link shouldn't require finding and focusing the right browser
+profile first. Set Transom as your default browser, then choose where
+links open and save rules for the ones you use regularly.
+
+- **Use the right AI account.** Open Claude, ChatGPT, or other AI service
+  links from a chat, email, or terminal in the profile that has your
+  subscription or team account signed in. No need to click that profile's
+  window before opening the link.
+- **Route GitHub links by account or organization.** Send
+  `github.com/work-org` and its subpaths to your work profile, while
+  personal repositories open in your personal profile. Add a more
+  specific repository rule when it needs a different account.
+- **Keep client and work accounts separate.** Route a client's dashboard
+  or a workspace-specific path to its dedicated profile instead of
+  opening it in whichever account you used last.
+- **Choose once for unfamiliar links.** Search for a profile in the
+  launcher and open the link without saving a rule. Hold Option when
+  opening a link to override an existing rule for that visit.
+
 ## Install
 
 Requires macOS 13 or later on an Apple silicon Mac (M1 or newer).
