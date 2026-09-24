@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/darvid/transom/compare/v0.2.1...v0.2.2) (2026-09-24)
+
+
+### Bug Fixes
+
+* **overlay:** keep inactive titlebar backing with browser ([#17](https://github.com/darvid/transom/issues/17)) ([73ba89e](https://github.com/darvid/transom/commit/73ba89e61b240f6093b2c638a170c9b336f321d1))
+
 ## [0.2.1](https://github.com/darvid/transom/compare/v0.2.0...v0.2.1) (2026-09-22)
 
 
