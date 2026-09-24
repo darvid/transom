@@ -5,8 +5,9 @@ final class ContainerController {
     let browser: InstalledBrowser
     private let accessibility = AccessibilityController()
     private let logger = Logger(subsystem: "com.transom.app", category: "OverlayPanels")
-    private let shellPanel: NSPanel
     private let shellView: ContainerShellView
+    private let overlapPanel: NSPanel
+    private let overlapView: ContainerShellView
     private let tabPanel: NSPanel
     private let tabStrip: TabStripView
     private let resizeHandles: [ResizeHandleController]
@@ -33,21 +34,22 @@ final class ContainerController {
     init(browser: InstalledBrowser) {
         self.browser = browser
         shellView = ContainerShellView(frame: .zero)
-        shellPanel = NSPanel(
+        overlapView = ContainerShellView(frame: .zero)
+        overlapPanel = NSPanel(
             contentRect: .zero,
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
-        shellPanel.isOpaque = false
-        shellPanel.backgroundColor = .clear
-        shellPanel.hasShadow = false
-        shellPanel.hidesOnDeactivate = false
-        shellPanel.ignoresMouseEvents = true
-        shellPanel.level = .normal
-        shellPanel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
-        shellPanel.isReleasedWhenClosed = false
-        shellPanel.contentView = shellView
+        overlapPanel.isOpaque = false
+        overlapPanel.backgroundColor = .clear
+        overlapPanel.hasShadow = false
+        overlapPanel.hidesOnDeactivate = false
+        overlapPanel.ignoresMouseEvents = true
+        overlapPanel.level = .normal
+        overlapPanel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
+        overlapPanel.isReleasedWhenClosed = false
+        overlapPanel.contentView = overlapView
 
         tabPanel = NSPanel(
             contentRect: .zero,
@@ -67,7 +69,12 @@ final class ContainerController {
         tabPanel.isReleasedWhenClosed = false
 
         tabStrip = TabStripView(browser: browser, frame: .zero)
-        tabPanel.contentView = tabStrip
+        let titlebarContent = NSView(frame: .zero)
+        titlebarContent.wantsLayer = true
+        titlebarContent.layer?.masksToBounds = true
+        titlebarContent.addSubview(shellView)
+        titlebarContent.addSubview(tabStrip)
+        tabPanel.contentView = titlebarContent
 
         resizeHandles = [
             ResizeHandleController(edge: .left),
@@ -273,6 +280,7 @@ final class ContainerController {
 
     func settingsDidChange() {
         shellView.applyTheme(AppSettings.shared.overlayTheme)
+        overlapView.applyTheme(AppSettings.shared.overlayTheme)
         tabStrip.applyTheme(AppSettings.shared.overlayTheme)
         lastOrderedSelectionID = nil
         positionChrome()
@@ -528,16 +536,30 @@ final class ContainerController {
                 < (right.isNull ? 0 : right.width * right.height)
         }
         let edgeExtension = 1 / (screen?.backingScaleFactor ?? 1)
-        shellPanel.setFrame(
+        let shellWidth = tabFrame.width + 2 * edgeExtension
+        let shellHeight = tabFrame.height + ContainerGeometry.tabOverlap
+        let shellX = tabFrame.minX - edgeExtension
+        // The titlebar belongs above the browser; only its rounded-corner
+        // overlap belongs behind the browser's own chrome.
+        tabPanel.setFrame(
+            CGRect(x: shellX, y: tabFrame.minY, width: shellWidth, height: tabFrame.height),
+            display: true
+        )
+        shellView.frame = CGRect(
+            x: 0, y: -ContainerGeometry.tabOverlap, width: shellWidth, height: shellHeight
+        )
+        overlapPanel.setFrame(
             CGRect(
-                x: tabFrame.minX - edgeExtension,
+                x: shellX,
                 y: tabFrame.minY - ContainerGeometry.tabOverlap,
-                width: tabFrame.width + 2 * edgeExtension,
-                height: tabFrame.height + ContainerGeometry.tabOverlap
+                width: shellWidth,
+                height: shellHeight
             ),
             display: true
         )
-        tabPanel.setFrame(tabFrame, display: true)
+        tabStrip.frame = CGRect(
+            x: edgeExtension, y: 0, width: tabFrame.width, height: tabFrame.height
+        )
         for handle in resizeHandles {
             handle.position(around: browserFrame)
         }
@@ -551,19 +573,21 @@ final class ContainerController {
         let browserIsActive = NSWorkspace.shared.frontmostApplication?.processIdentifier
             == selectedWindow?.pid
         guard lastOrderedSelectionID != selectedWindowID || !tabPanel.isVisible
-            || browserIsActive != lastOrderedBrowserWasActive
+            || !overlapPanel.isVisible || browserIsActive != lastOrderedBrowserWasActive
         else {
             return
         }
 
-        // The overlapping glass stays behind browser chrome. When inactive,
-        // let intervening windows obscure it rather than cover the browser.
-        let shellAnchorID = browserIsActive
-            && AppSettings.shared.keepOverlayAboveInactiveWindows
+        let overlapNeedsOrdering = lastOrderedSelectionID != selectedWindowID
+            || !overlapPanel.isVisible
+            || browserIsActive != lastOrderedBrowserWasActive
+        let overlapAnchorID = AppSettings.shared.keepOverlayAboveInactiveWindows
             ? selectedWindowID
             : (bottomWindowID ?? selectedWindowID)
-        logger.notice("Ordering \(self.browser.kind.rawValue, privacy: .public) panels: selected=\(selectedWindowID), previous=\(self.lastOrderedSelectionID ?? 0), active=\(browserIsActive), tabsVisible=\(self.tabPanel.isVisible), glassVisible=\(self.shellPanel.isVisible)")
-        shellPanel.order(.below, relativeTo: Int(shellAnchorID))
+        logger.notice("Ordering \(self.browser.kind.rawValue, privacy: .public) panels: selected=\(selectedWindowID), previous=\(self.lastOrderedSelectionID ?? 0), active=\(browserIsActive), tabsVisible=\(self.tabPanel.isVisible)")
+        if overlapNeedsOrdering {
+            overlapPanel.order(.below, relativeTo: Int(overlapAnchorID))
+        }
         tabPanel.order(.above, relativeTo: Int(selectedWindowID))
         for handle in resizeHandles {
             handle.panel.order(.above, relativeTo: Int(selectedWindowID))
@@ -573,10 +597,10 @@ final class ContainerController {
     }
 
     private func hide() {
-        if shellPanel.isVisible || tabPanel.isVisible {
+        if overlapPanel.isVisible || tabPanel.isVisible {
             logger.notice("Ordering out \(self.browser.kind.rawValue, privacy: .public) panels: windows=\(self.windows.count), requestedVisible=\(self.isVisible)")
         }
-        shellPanel.orderOut(nil)
+        overlapPanel.orderOut(nil)
         tabPanel.orderOut(nil)
         for handle in resizeHandles {
             handle.close()
