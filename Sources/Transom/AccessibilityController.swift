@@ -110,6 +110,19 @@ struct AccessibilityController {
         return raiseResult == .success || mainResult == .success || focusResult == .success
     }
 
+    @discardableResult
+    func close(_ window: BrowserWindow) -> Bool {
+        guard let button = attribute(kAXCloseButtonAttribute, from: window.element),
+              CFGetTypeID(button) == AXUIElementGetTypeID()
+        else {
+            return false
+        }
+        return AXUIElementPerformAction(
+            unsafeBitCast(button, to: AXUIElement.self),
+            kAXPressAction as CFString
+        ) == .success
+    }
+
     private func attribute(_ name: String, from element: AXUIElement) -> CFTypeRef? {
         var value: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, name as CFString, &value) == .success else {
