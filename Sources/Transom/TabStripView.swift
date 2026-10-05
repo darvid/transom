@@ -597,7 +597,6 @@ private final class TabButton: NSView {
         super.init(frame: .zero)
         setAccessibilityElement(true)
         setAccessibilityRole(windowID == nil ? .button : .radioButton)
-        setAccessibilitySubrole(windowID == nil ? nil : .tabButton)
         if windowID != nil {
             setAccessibilityValue(NSNumber(value: false))
             setAccessibilityCustomActions([
