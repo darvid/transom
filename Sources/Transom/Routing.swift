@@ -252,11 +252,6 @@ struct BrowserLauncher {
             }
             return
         }
-        let process = Process()
-        process.executableURL = browser.executableURL
-        process.standardOutput = FileHandle.nullDevice
-        process.standardError = FileHandle.nullDevice
-
         var arguments: [String] = []
         switch browser.family {
         case .chromium:
@@ -271,6 +266,40 @@ struct BrowserLauncher {
             }
             arguments.append(contentsOf: ["-new-window", url.absoluteString])
         }
+        run(browser: browser, arguments: arguments, completion: completion)
+    }
+
+    func openWindow(
+        browser: InstalledBrowser,
+        profile: BrowserProfile?,
+        completion: @escaping (Result<Void, Error>) -> Void
+    ) {
+        var arguments: [String] = []
+        switch browser.family {
+        case .chromium:
+            arguments.append("--user-data-dir=\(browser.profileRoot.path)")
+            if let profile {
+                arguments.append("--profile-directory=\(profile.id)")
+            }
+            arguments.append("--new-window")
+        case .firefox:
+            if let profile {
+                arguments.append(contentsOf: ["-P", profile.name])
+            }
+            arguments.append(contentsOf: ["-new-window", "about:newtab"])
+        }
+        run(browser: browser, arguments: arguments, completion: completion)
+    }
+
+    private func run(
+        browser: InstalledBrowser,
+        arguments: [String],
+        completion: @escaping (Result<Void, Error>) -> Void
+    ) {
+        let process = Process()
+        process.executableURL = browser.executableURL
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
         process.arguments = arguments
 
         do {

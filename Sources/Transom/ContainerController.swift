@@ -4,6 +4,7 @@ import OSLog
 final class ContainerController {
     let browser: InstalledBrowser
     private let accessibility = AccessibilityController()
+    private let launcher = BrowserLauncher()
     private let logger = Logger(subsystem: "com.transom.app", category: "OverlayPanels")
     private let shellView: ContainerShellView
     private let overlapPanel: NSPanel
@@ -99,6 +100,15 @@ final class ContainerController {
         }
         tabStrip.onReorderWindow = { [weak self] id, index in
             self?.reorderWindow(id, to: index)
+        }
+        tabStrip.onCloseWindow = { [weak self] id in
+            guard let self, let window = self.windows.first(where: { $0.id == id }) else { return }
+            if !self.accessibility.close(window) {
+                self.logger.error("Could not close \(self.browser.kind.rawValue, privacy: .public) window \(id)")
+            }
+        }
+        tabStrip.onOpenProfile = { [weak self] profile in
+            self?.openWindow(profile: profile)
         }
         for handle in resizeHandles {
             handle.onResize = { [weak self] edge, delta in
@@ -261,6 +271,9 @@ final class ContainerController {
         }
 
         tabStrip.update(windows: windows, selectedWindowID: selectedWindowID)
+        tabStrip.setBrowserActive(
+            NSWorkspace.shared.frontmostApplication?.processIdentifier == selectedWindow?.pid
+        )
         positionChrome()
     }
 
@@ -380,6 +393,19 @@ final class ContainerController {
             guard let self, self.pendingSelectionID == id else { return }
             self.accessibility.raise(window)
             self.show()
+        }
+    }
+
+    private func openWindow(profile: BrowserProfile?) {
+        let browser = windows.first?.browser ?? self.browser
+        launcher.openWindow(browser: browser, profile: profile) { result in
+            guard case let .failure(error) = result else { return }
+            let alert = NSAlert()
+            alert.alertStyle = .warning
+            alert.messageText = "Could not open a new window"
+            alert.informativeText = error.localizedDescription
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
         }
     }
 
