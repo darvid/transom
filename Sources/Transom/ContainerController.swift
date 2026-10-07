@@ -23,6 +23,8 @@ final class ContainerController {
     private var pendingSelectionID: CGWindowID?
     private var pendingSelectionMatches = 0
     private var pendingSelectionDeadline = Date.distantPast
+    private var discoveredSelectionID: CGWindowID?
+    private var discoveredSelectionMatches = 0
     private var lastOrderedSelectionID: CGWindowID?
     private var lastOrderedBrowserWasActive = false
     private var pendingInteractiveTilePlacement: PendingTilePlacement?
@@ -130,6 +132,8 @@ final class ContainerController {
             orderedProfileIDs = [:]
             pendingAlignmentIDs = []
             pendingSelectionID = nil
+            discoveredSelectionID = nil
+            discoveredSelectionMatches = 0
             lastOrderedSelectionID = nil
             lastOrderedBrowserWasActive = false
             pendingInteractiveTilePlacement = nil
@@ -147,28 +151,18 @@ final class ContainerController {
         bottomWindowID = newWindows.last?.id
         let liveWindowIDs = Set(newWindows.map(\.id))
         pendingAlignmentIDs.formIntersection(liveWindowIDs)
-        stableWindowOrder.removeAll { !liveWindowIDs.contains($0) }
-        for id in newWindows.map(\.id) where !stableWindowOrder.contains(id) {
-            stableWindowOrder.append(id)
-        }
         let resolvedProfiles = Dictionary(uniqueKeysWithValues: newWindows.compactMap { window in
             window.profile.map { (window.id, $0.id) }
         })
-        let learnedProfile = resolvedProfiles.contains { orderedProfileIDs[$0.key] != $0.value }
-        orderedProfileIDs = orderedProfileIDs.filter { liveWindowIDs.contains($0.key) }
-        orderedProfileIDs.merge(resolvedProfiles) { _, new in new }
-        if learnedProfile {
-            let savedProfiles = AppSettings.shared.profileOrder(browser: browser.kind)
-            let profileRanks = Dictionary(
-                savedProfiles.enumerated().map { ($0.element, $0.offset) },
-                uniquingKeysWith: { first, _ in first }
-            )
-            stableWindowOrder = stableWindowOrder.enumerated().sorted { lhs, rhs in
-                let leftRank = orderedProfileIDs[lhs.element].flatMap { profileRanks[$0] } ?? Int.max
-                let rightRank = orderedProfileIDs[rhs.element].flatMap { profileRanks[$0] } ?? Int.max
-                return leftRank == rightRank ? lhs.offset < rhs.offset : leftRank < rightRank
-            }.map(\.element)
-        }
+        let tabOrder = WindowTabOrdering.resolved(
+            previousOrder: stableWindowOrder,
+            previousProfileIDs: orderedProfileIDs,
+            liveWindowIDsInDiscoveryOrder: newWindows.map(\.id),
+            discoveredProfileIDs: resolvedProfiles,
+            savedProfileOrder: AppSettings.shared.profileOrder(browser: browser.kind)
+        )
+        stableWindowOrder = tabOrder.windowIDs
+        orderedProfileIDs = tabOrder.profileIDsByWindowID
         let orderByID = Dictionary(
             uniqueKeysWithValues: stableWindowOrder.enumerated().map { ($0.element, $0.offset) }
         )
@@ -217,7 +211,7 @@ final class ContainerController {
                 self.selectedWindowID = selectedWindowID
             } else {
                 pendingSelectionID = nil
-                selectedWindowID = frontmostWindowID
+                updateSelectionFromDiscovery(frontmostWindowID, liveWindowIDs: liveWindowIDs)
             }
         } else if selectedWindowID == nil
             || !newWindows.contains(where: { $0.id == selectedWindowID })
@@ -316,6 +310,8 @@ final class ContainerController {
         pendingSelectionID = nil
         pendingSelectionMatches = 0
         pendingSelectionDeadline = .distantPast
+        discoveredSelectionID = nil
+        discoveredSelectionMatches = 0
         pointerDragWindowID = coreGraphicsBrowserWindowID(at: screenLocation)
             ?? selectedWindowID
         if let pointerDragWindowID {
@@ -375,6 +371,32 @@ final class ContainerController {
         return pendingInteractiveTilePlacement.initialFrame.distance(to: frame) > 3
     }
 
+    private func updateSelectionFromDiscovery(_ discoveredID: CGWindowID?, liveWindowIDs: Set<CGWindowID>) {
+        guard let discoveredID, liveWindowIDs.contains(discoveredID) else { return }
+        guard selectedWindowID != nil, selectedWindowID != discoveredID else {
+            selectedWindowID = discoveredID
+            discoveredSelectionID = nil
+            discoveredSelectionMatches = 0
+            return
+        }
+        guard liveWindowIDs.contains(selectedWindowID!) else {
+            selectedWindowID = discoveredID
+            discoveredSelectionID = nil
+            discoveredSelectionMatches = 0
+            return
+        }
+        if discoveredSelectionID == discoveredID {
+            discoveredSelectionMatches += 1
+        } else {
+            discoveredSelectionID = discoveredID
+            discoveredSelectionMatches = 1
+        }
+        guard discoveredSelectionMatches >= 2 else { return }
+        selectedWindowID = discoveredID
+        discoveredSelectionID = nil
+        discoveredSelectionMatches = 0
+    }
+
     private func selectWindow(_ id: CGWindowID) {
         guard let window = windows.first(where: { $0.id == id }) else {
             return
@@ -383,6 +405,8 @@ final class ContainerController {
         pendingSelectionID = id
         pendingSelectionMatches = 0
         pendingSelectionDeadline = Date().addingTimeInterval(2)
+        discoveredSelectionID = nil
+        discoveredSelectionMatches = 0
         pointerDragWindowID = nil
         pointerDragDeadline = nil
         tabStrip.update(windows: windows, selectedWindowID: id)

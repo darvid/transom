@@ -160,7 +160,7 @@ final class TabStripView: NSView {
         }
 
         guard needsLayout else { return }
-        layoutTabs(animated: window != nil)
+        layoutTabs(animated: false)
         updateAccessibilityPositions()
         displayIfNeeded()
         window?.displayIfNeeded()
