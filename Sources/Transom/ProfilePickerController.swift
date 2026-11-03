@@ -47,7 +47,10 @@ final class ProfilePickerController: NSObject, NSTableViewDataSource, NSTableVie
 
     private let panel: PickerPanel
     private let searchField = NSTextField()
-    private let urlLabel = NSTextField(labelWithString: "")
+    private let hostLabel = NSTextField(labelWithString: "")
+    private let pathLabel = NSTextField(labelWithString: "")
+    private let queryLabel = NSTextField(labelWithString: "")
+    private lazy var urlRow = NSStackView(views: [hostLabel, pathLabel, queryLabel])
     private let tableView = NSTableView()
     private let scrollView = NSScrollView()
     private let emptyLabel = NSTextField(wrappingLabelWithString: "")
@@ -86,7 +89,7 @@ final class ProfilePickerController: NSObject, NSTableViewDataSource, NSTableVie
         configureList()
         let footer = configureFooter()
 
-        for view in [searchSurface, urlLabel, linkIcon, topRule, scrollView, emptyLabel, bottomRule, footer] {
+        for view in [searchSurface, urlRow, linkIcon, topRule, scrollView, emptyLabel, bottomRule, footer] {
             view.translatesAutoresizingMaskIntoConstraints = false
             background.addSubview(view)
         }
@@ -100,14 +103,16 @@ final class ProfilePickerController: NSObject, NSTableViewDataSource, NSTableVie
             searchSurface.heightAnchor.constraint(equalToConstant: 46),
 
             linkIcon.leadingAnchor.constraint(equalTo: searchSurface.leadingAnchor, constant: 15),
-            linkIcon.centerYAnchor.constraint(equalTo: urlLabel.centerYAnchor),
+            linkIcon.centerYAnchor.constraint(equalTo: urlRow.centerYAnchor),
             linkIcon.widthAnchor.constraint(equalToConstant: 13),
             linkIcon.heightAnchor.constraint(equalToConstant: 13),
-            urlLabel.topAnchor.constraint(equalTo: searchSurface.bottomAnchor, constant: 11),
-            urlLabel.leadingAnchor.constraint(equalTo: linkIcon.trailingAnchor, constant: 8),
-            urlLabel.trailingAnchor.constraint(equalTo: searchSurface.trailingAnchor, constant: -4),
+            urlRow.topAnchor.constraint(equalTo: searchSurface.bottomAnchor, constant: 11),
+            urlRow.leadingAnchor.constraint(equalTo: linkIcon.trailingAnchor, constant: 8),
+            urlRow.trailingAnchor.constraint(lessThanOrEqualTo: searchSurface.trailingAnchor, constant: -4),
+            // Keep room for the path when the host alone is very long.
+            hostLabel.widthAnchor.constraint(lessThanOrEqualTo: searchSurface.widthAnchor, multiplier: 0.5),
 
-            topRule.topAnchor.constraint(equalTo: urlLabel.bottomAnchor, constant: 11),
+            topRule.topAnchor.constraint(equalTo: urlRow.bottomAnchor, constant: 11),
             topRule.leadingAnchor.constraint(equalTo: background.leadingAnchor),
             topRule.trailingAnchor.constraint(equalTo: background.trailingAnchor),
             topRule.heightAnchor.constraint(equalToConstant: 1),
@@ -201,10 +206,26 @@ final class ProfilePickerController: NSObject, NSTableViewDataSource, NSTableVie
         linkIcon.symbolConfiguration = .init(pointSize: 11, weight: .semibold)
         linkIcon.contentTintColor = .tertiaryLabelColor
 
-        urlLabel.lineBreakMode = .byTruncatingMiddle
-        urlLabel.maximumNumberOfLines = 1
-        urlLabel.cell?.usesSingleLineMode = true
-        urlLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        // When the link is too long, the query shrinks first, then the
+        // path (middle-truncated), and the host last. All stay below the
+        // window's size-holding priority (500) so the panel never widens.
+        let parts: [(NSTextField, NSFont, NSLineBreakMode, Float)] = [
+            (hostLabel, .systemFont(ofSize: 12.5, weight: .semibold), .byTruncatingMiddle, 450),
+            (pathLabel, .systemFont(ofSize: 12.5), .byTruncatingMiddle, 400),
+            (queryLabel, .systemFont(ofSize: 12.5), .byTruncatingTail, 250),
+        ]
+        for (label, font, lineBreakMode, resistance) in parts {
+            label.font = font
+            label.lineBreakMode = lineBreakMode
+            label.maximumNumberOfLines = 1
+            label.cell?.usesSingleLineMode = true
+            label.setContentCompressionResistancePriority(.init(resistance), for: .horizontal)
+            label.setContentHuggingPriority(.required, for: .horizontal)
+        }
+        urlRow.orientation = .horizontal
+        urlRow.alignment = .firstBaseline
+        urlRow.spacing = 0
+        urlRow.detachesHiddenViews = true
     }
 
     private func configureList() {
@@ -305,8 +326,7 @@ final class ProfilePickerController: NSObject, NSTableViewDataSource, NSTableVie
         showsBrowserNames = Set(allChoices.map(\.browser.kind)).count > 1
         applyTheme(AppSettings.shared.overlayTheme)
         searchField.stringValue = ""
-        urlLabel.attributedStringValue = attributedURL(url)
-        urlLabel.toolTip = url.absoluteString
+        showURL(url)
 
         scopes = RoutingScope.suggestions(for: url)
         rebuildScopeMenu()
@@ -328,8 +348,11 @@ final class ProfilePickerController: NSObject, NSTableViewDataSource, NSTableVie
     private func rebuildScopeMenu() {
         let menu = NSMenu()
         for (index, scope) in scopes.enumerated() {
-            let detail = scope.exact ? "exact path" : (scope.path.isEmpty ? "entire site" : "and subpaths")
-            let item = NSMenuItem(title: "\(scope.pattern) — \(detail)", action: nil, keyEquivalent: "")
+            // The kind leads so truncating a long pattern never hides it.
+            let kind = scope.exact ? "Exact path" : (scope.path.isEmpty ? "Entire site" : "Path and subpaths")
+            let title = "\(kind): \(scope.pattern.middleTruncated(to: 64))"
+            let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+            item.toolTip = scope.pattern
             item.tag = index
             menu.addItem(item)
         }
@@ -345,25 +368,18 @@ final class ProfilePickerController: NSObject, NSTableViewDataSource, NSTableVie
         scopePopup.selectItem(at: 0)
     }
 
-    private func attributedURL(_ url: URL) -> NSAttributedString {
-        let palette = Palette(theme: theme)
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.lineBreakMode = .byTruncatingMiddle
-        let host = url.host ?? url.absoluteString
-        let rest = url.host.flatMap { host in
-            url.absoluteString.range(of: host).map { String(url.absoluteString[$0.upperBound...]) }
-        } ?? ""
-        let result = NSMutableAttributedString(string: host, attributes: [
-            .font: NSFont.systemFont(ofSize: 12.5, weight: .semibold),
-            .foregroundColor: palette.text,
-            .paragraphStyle: paragraph,
-        ])
-        result.append(NSAttributedString(string: rest, attributes: [
-            .font: NSFont.systemFont(ofSize: 12.5),
-            .foregroundColor: palette.secondaryText,
-            .paragraphStyle: paragraph,
-        ]))
-        return result
+    private func showURL(_ url: URL) {
+        let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        let path = components?.percentEncodedPath ?? ""
+        var extras = components?.percentEncodedQuery.map { "?" + $0 } ?? ""
+        extras += components?.percentEncodedFragment.map { "#" + $0 } ?? ""
+        hostLabel.stringValue = url.host ?? url.absoluteString
+        pathLabel.stringValue = url.host == nil ? "" : path
+        queryLabel.stringValue = url.host == nil ? "" : extras
+        pathLabel.isHidden = pathLabel.stringValue.isEmpty
+        queryLabel.isHidden = queryLabel.stringValue.isEmpty
+        urlRow.toolTip = url.absoluteString
+        urlRow.setAccessibilityLabel(url.absoluteString)
     }
 
     private func resizeToFit(keepingTop: Bool) {
@@ -516,7 +532,7 @@ final class ProfilePickerController: NSObject, NSTableViewDataSource, NSTableVie
         } else if let scope {
             let coverage = scope.exact ? "exactly" : (scope.path.isEmpty ? "and everything on it" : "and its subpaths")
             let target = selected.map { " in \($0.displayProfile.displayName)" } ?? ""
-            hintLabel.stringValue = "Always open \(scope.pattern) \(coverage)\(target). Query and fragment are ignored."
+            hintLabel.stringValue = "Always open \(scope.pattern.middleTruncated(to: 40)) \(coverage)\(target). Query and fragment are ignored."
         } else {
             hintLabel.stringValue = "Enter a path beginning with /, without a query string or fragment."
             hintLabel.textColor = .systemOrange
@@ -541,6 +557,9 @@ final class ProfilePickerController: NSObject, NSTableViewDataSource, NSTableVie
             rule.layer?.backgroundColor = palette.text.withAlphaComponent(0.08).cgColor
         }
         searchField.textColor = palette.text
+        hostLabel.textColor = palette.text
+        pathLabel.textColor = palette.secondaryText
+        queryLabel.textColor = palette.tertiaryText
         rememberLabel.textColor = palette.text
         emptyLabel.textColor = palette.secondaryText
         openButton.bezelColor = theme.catppuccinPalette == nil ? nil : palette.accent
@@ -701,5 +720,13 @@ private extension NSColor {
         guard let rgb = usingColorSpace(.sRGB) else { return false }
         let luminance = 0.299 * rgb.redComponent + 0.587 * rgb.greenComponent + 0.114 * rgb.blueComponent
         return luminance * rgb.alphaComponent + (1 - rgb.alphaComponent) * 0.5 > 0.62
+    }
+}
+
+private extension String {
+    func middleTruncated(to limit: Int) -> String {
+        guard count > limit, limit > 1 else { return self }
+        let head = (limit - 1) / 2
+        return prefix(head) + "…" + suffix(limit - 1 - head)
     }
 }
