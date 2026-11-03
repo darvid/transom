@@ -96,12 +96,15 @@ default browser from **Settings… → Links**.
 Unmatched links open a Spotlight-style profile picker with:
 
 - browser and profile search
-- keyboard navigation and Return/Escape handling
-- browser icons and profile colors
-- saved destinations for an entire site, a path and its subpaths, or an
-  exact path, including custom paths
+- keyboard navigation, Return/Escape handling, and Command-1 through
+  Command-9 to open a profile directly
+- profile-colored avatars, with browser badges when several browsers
+  are listed
+- a **Remember for** switch that saves the destination for an entire
+  site, a path and its subpaths, or an exact path, including custom
+  paths
 
-![URL picker with profiles and routing scopes](docs/assets/launcher.png)
+![URL picker with profile avatars and the Remember for scope switch](docs/assets/launcher.png)
 
 The **Links** section in Settings supports mappings using:
 
